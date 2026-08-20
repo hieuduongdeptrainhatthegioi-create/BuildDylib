@@ -1,13 +1,13 @@
-name: Build Dylib
+name: Build Swift Dylib
 on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Compile Dylib for iOS
+      - name: Compile Swift to Dylib
         run: |
-          clang -dynamiclib -arch arm64 -isysroot $(xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=14.0 main.m -o Plugin.dylib -framework UIKit -framework Foundation
+          swiftc -emit-library -target arm64-apple-ios14.0 -sdk $(xcrun --sdk iphoneos --show-sdk-path) main.swift -o Plugin.dylib
       - name: Upload Dylib Artifact
         uses: actions/upload-artifact@v3
         with:
