@@ -1,12 +1,12 @@
 import UIKit
 
-// Khai báo class để khởi chạy mã ngầm khi dylib được nạp vào ứng dụng
-class KeyChecker: NSObject {
+@objc(KeyChecker)
+public class KeyChecker: NSObject {
     
-    // Đổi link này thành link API máy chủ Node.js / Render của bạn
+    // Đường link API Cloudflare Worker của bạn đã được cập nhật thành công
     static let apiURL = "https://uchihav4.hieuduongreallife.workers.dev"
     
-    @objc static func loadPlugin() {
+    @objc public static func loadPlugin() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             let isActivated = UserDefaults.standard.string(forKey: "AppActivated")
             if isActivated != "YES" {
@@ -19,12 +19,11 @@ class KeyChecker: NSObject {
         guard let topVC = getTopViewController() else { return }
         
         let alert = UIAlertController(title: "XÁC THỰC BẢN QUYỀN", 
-                                      message: "Vui lòng nhập Key để kích hoạt ứng dụng:", 
+                                      message: "Vui lòng nhập Key để kích hoạt:", 
                                       preferredStyle: .alert)
         
         alert.addTextField { textField in
-            textField.placeholder = "Nhập Key của bạn..."
-            textField.isSecureTextEntry = false
+            textField.placeholder = "Nhập Key tại đây..."
         }
         
         let submitAction = UIAlertAction(title: "Kích Hoạt", style: .default) { _ in
@@ -36,52 +35,42 @@ class KeyChecker: NSObject {
         }
         
         alert.addAction(submitAction)
-        topVC.present(alert, animated: true, completion: nil)
+        topVC.present(alert, animated: true)
     }
     
     static func verifyKeyWithServer(key: String) {
         guard let url = URL(string: apiURL) else { return }
-        
-        // Lấy Device ID (UDID) của thiết bị
         let deviceID = UIDevice.current.identifierForVendor?.uuidString ?? "UNKNOWN_ID"
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let bodyParams: [String: Any] = [
-            "key": key,
-            "udid": deviceID
-        ]
-        
+        let bodyParams: [String: Any] = ["key": key, "udid": deviceID]
         request.httpBody = try? JSONSerialization.data(withJSONObject: bodyParams)
         
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 guard let data = data, error == nil else {
-                    showAlertAndRetry(message: "Không thể kết nối đến Server!")
+                    showAlertAndRetry(message: "Lỗi kết nối Server!")
                     return
                 }
                 
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let status = json["status"] as? String, status == "success" {
-                    
-                    // Lưu trạng thái đã kích hoạt vào thiết bị
                     UserDefaults.standard.set("YES", forKey: "AppActivated")
                     UserDefaults.standard.synchronize()
-                    
                     showSuccessAlert()
                 } else {
-                    showAlertAndRetry(message: "Key không hợp lệ hoặc đã hết hạn!")
+                    showAlertAndRetry(message: "Key không chính xác hoặc đã hết hạn!")
                 }
             }
-        }
-        task.resume()
+        }.resume()
     }
     
     static func showAlertAndRetry(message: String) {
         guard let topVC = getTopViewController() else { return }
-        let alert = UIAlertController(title: "Lỗi", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Thất Bại", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Thử lại", style: .default) { _ in showKeyDialog() })
         topVC.present(alert, animated: true)
     }
@@ -89,11 +78,10 @@ class KeyChecker: NSObject {
     static func showSuccessAlert() {
         guard let topVC = getTopViewController() else { return }
         let alert = UIAlertController(title: "Thành Công", message: "Kích hoạt bản quyền thành công!", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Bắt đầu dùng", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Sử dụng ứng dụng", style: .cancel))
         topVC.present(alert, animated: true)
     }
     
-    // Hàm phụ hỗ trợ tìm Controller đang hiển thị trên màn hình
     static func getTopViewController() -> UIViewController? {
         var topVC = UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.rootViewController
         while let presented = topVC?.presentedViewController {
@@ -103,7 +91,7 @@ class KeyChecker: NSObject {
     }
 }
 
-// Constructor nạp ứng dụng ngầm
+// Chèn tự động khi ứng dụng iOS vừa khởi chạy
 @_cdecl("initPlugin")
 public func initPlugin() {
     KeyChecker.loadPlugin()
