@@ -1,15 +1,25 @@
 name: Build Swift Dylib
 on: [push, workflow_dispatch]
+
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Compile Swift to Dylib
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Compile Swift Code to Dylib
         run: |
-          swiftc -emit-library -target arm64-apple-ios14.0 -sdk $(xcrun --sdk iphoneos --show-sdk-path) main.swift -o Plugin.dylib
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          swiftc -emit-library \
+            -target arm64-apple-ios14.0 \
+            -sdk "$SDK_PATH" \
+            -Xlinker -rpath -Xlinker /usr/lib/swift \
+            -Xlinker -rpath -Xlinker @executable_path/Frameworks \
+            main.swift -o Plugin.dylib
+
       - name: Upload Dylib Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: KeyPlugin
           path: Plugin.dylib
